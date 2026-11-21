@@ -1,0 +1,150 @@
+{
+  "adminAuth": {
+    "username": "admin",
+    "password": "nexwork@123"
+  },
+  "company": {
+    "name": "NEXWORK",
+    "logo": "/logo.png",
+    "tagline": "Media, AI Automation & Digital Growth \u2014 Under One Roof.",
+    "heroSubtitle": "NEXWORK combines three specialized agencies to help modern brands get seen, automate operations, and scale faster with clarity and craft.",
+    "heroImage": "",
+    "email": "contact@nexwork.in",
+    "phone": "+91 98765 43210",
+    "address": "Varanasi, Uttar Pradesh, India",
+    "youtubeChannel": "https://youtube.com/@timesoftoday?si=xjiL9zi6KHhtRWXo",
+    "stats": [
+      {
+        "label": "Specialized Agencies",
+        "value": "03"
+      },
+      {
+        "label": "End-to-End Solutions",
+        "value": "100%"
+      },
+      {
+        "label": "Client-First Support",
+        "value": "24/7"
+      }
+    ],
+    "instagram": "https://www.instagram.com/",
+    "facebook": "https://www.facebook.com/",
+    "linkedin": "https://www.linkedin.com/"
+  },
+  "mediaAgency": {
+    "title": "Media Agency \u2014 Times of Today",
+    "description": "Our media agency delivers ground reporting, investigative digital journalism, high-retention video production, and crisp visual storytelling that connects real stories with audiences everywhere.",
+    "items": [
+      {
+        "id": "m1",
+        "title": "Latest Ground Report \u2014 Times of Today",
+        "thumbnail": "/showcase/media-1.svg",
+        "link": "https://youtube.com/@timesoftoday?si=xjiL9zi6KHhtRWXo"
+      },
+      {
+        "id": "m2",
+        "title": "Special Analysis & Public Interviews",
+        "thumbnail": "/showcase/media-2.svg",
+        "link": "https://youtube.com/@timesoftoday?si=xjiL9zi6KHhtRWXo"
+      },
+      {
+        "id": "m3",
+        "title": "Trending Video Stories & Shorts",
+        "thumbnail": "/showcase/media-3.svg",
+        "link": "https://youtube.com/@timesoftoday?si=xjiL9zi6KHhtRWXo"
+      }
+    ]
+  },
+  "aiAutomation": {
+    "title": "AI Automation",
+    "description": "NEXWORK builds practical AI automation systems for businesses \u2014 from custom customer support agents and WhatsApp/Telegram bots to automated CRM workflows, smart dashboards, and intelligent software pipelines that save hours every single day.",
+    "highlights": [
+      "Custom AI Chatbots & 24/7 Customer Support Agents",
+      "Business Workflow, CRM & Lead Qualification Automation",
+      "WhatsApp, Telegram & Social Media Automation Bots",
+      "Custom Business Software, Dashboards & IoT Integrations"
+    ],
+    "items": [
+      {
+        "id": "ai1",
+        "title": "Smart AI Customer Support Agents",
+        "image": "/showcase/ai-1.svg"
+      },
+      {
+        "id": "ai2",
+        "title": "End-to-End Workflow & CRM Automation",
+        "image": "/showcase/ai-2.svg"
+      },
+      {
+        "id": "ai3",
+        "title": "Custom AI Software & IoT Solutions",
+        "image": "/showcase/ai-3.svg"
+      }
+    ]
+  },
+  "digitalMarketing": {
+    "title": "Digital Marketing",
+    "description": "NEXWORK crafts performance-focused digital marketing campaigns, clean visual brand identities, viral short-form video strategies, and SEO systems designed to turn attention into measurable revenue.",
+    "highlights": [
+      "Performance Marketing (Meta Ads & Google Ads)",
+      "Social Media Management & Short-Form Reels Growth",
+      "Minimalist Brand Creatives, Catalogues & Ad Design",
+      "Search Engine Optimization (SEO) & Growth Analytics"
+    ],
+    "items": [
+      {
+        "id": "dm1",
+        "title": "High-Converting Performance Ad Campaigns",
+        "image": "/showcase/dm-1.svg"
+      },
+      {
+        "id": "dm2",
+        "title": "Social Media Strategy & Brand Presence",
+        "image": "/showcase/dm-2.svg"
+      },
+      {
+        "id": "dm3",
+        "title": "Minimalist Creatives & SEO Growth",
+        "image": "/showcase/dm-3.svg"
+      }
+    ]
+  },
+  "enquiries": [],
+  "applications": [],
+  "reviews": [
+    {
+      "id": "r1",
+      "name": "Rahul Verma",
+      "role": "Founder, Verma Retail",
+      "service": "Digital Marketing",
+      "rating": 5,
+      "comment": "NEXWORK completely transformed our online presence. Their ad creatives and social media strategy brought consistent customer leads within the first month."
+    },
+    {
+      "id": "r2",
+      "name": "Ananya Tiwari",
+      "role": "Operations Lead, EduCore",
+      "service": "AI Automation",
+      "rating": 5,
+      "comment": "Their AI WhatsApp and lead automation setup saved our team hours of manual follow-ups every single day. Super clean execution and fast support."
+    },
+    {
+      "id": "r3",
+      "name": "Vikram Singh",
+      "role": "Event Organizer, Varanasi",
+      "service": "Media Agency",
+      "rating": 5,
+      "comment": "Times of Today covered our ground event with sharp storytelling and great video production. Truly professional media team."
+    }
+  ],
+  "employees": [
+    {
+      "id": "e1",
+      "employeeId": "NXW001",
+      "name": "Demo Employee",
+      "role": "Media & Operations",
+      "password": "emp@123"
+    }
+  ],
+  "attendance": []
+}
