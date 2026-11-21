@@ -40,8 +40,29 @@ export default function AdminPage() {
     setAuth(a.authenticated);
     if (a.authenticated) {
       const site = await fetch("/api/site").then((r) => r.json());
-      setData(site);
-      setNewPass({ username: site.adminAuth?.username || "admin", password: "" });
+      const safeSite = {
+        ...site,
+        company: site.company || {},
+        mediaAgency: {
+          description: site.mediaAgency?.description || "",
+          items: site.mediaAgency?.items || [],
+        },
+        aiAutomation: {
+          description: site.aiAutomation?.description || "",
+          items: site.aiAutomation?.items || [],
+        },
+        digitalMarketing: {
+          description: site.digitalMarketing?.description || "",
+          items: site.digitalMarketing?.items || [],
+        },
+        reviews: site.reviews || [],
+        enquiries: site.enquiries || [],
+        applications: site.applications || [],
+        employees: site.employees || [],
+        attendance: site.attendance || [],
+      };
+      setData(safeSite);
+      setNewPass({ username: safeSite.adminAuth?.username || "admin", password: "" });
     }
     setLoading(false);
   }
@@ -105,7 +126,7 @@ export default function AdminPage() {
           ...data.mediaAgency,
           items: [
             { id: Date.now().toString(), title: newMedia.title, link: newMedia.link, thumbnail },
-            ...data.mediaAgency.items,
+            ...(data.mediaAgency.items || []),
           ],
         },
       };
@@ -127,7 +148,7 @@ export default function AdminPage() {
         ...data,
         [sectionKey]: {
           ...data[sectionKey],
-          items: [{ id: Date.now().toString(), title: stateObj.title, image }, ...data[sectionKey].items],
+          items: [{ id: Date.now().toString(), title: stateObj.title, image }, ...(data[sectionKey].items || [])],
         },
       };
       setData(updated);
@@ -147,7 +168,7 @@ export default function AdminPage() {
         ...data,
         [sectionKey]: {
           ...data[sectionKey],
-          items: data[sectionKey].items.map((item) =>
+          items: (data[sectionKey].items || []).map((item) =>
             item.id === id ? { ...item, [fieldName]: url } : item
           ),
         },
@@ -164,7 +185,7 @@ export default function AdminPage() {
       ...data,
       [sectionKey]: {
         ...data[sectionKey],
-        items: data[sectionKey].items.map((item) =>
+        items: (data[sectionKey].items || []).map((item) =>
           item.id === id ? { ...item, [field]: value } : item
         ),
       },
@@ -176,7 +197,7 @@ export default function AdminPage() {
       ...data,
       [sectionKey]: {
         ...data[sectionKey],
-        items: data[sectionKey].items.filter((i) => i.id !== id),
+        items: (data[sectionKey].items || []).filter((i) => i.id !== id),
       },
     };
     setData(updated);
@@ -186,7 +207,7 @@ export default function AdminPage() {
   async function deleteInboxItem(listKey, id) {
     const updated = {
       ...data,
-      [listKey]: data[listKey].filter((item) => item.id !== id),
+      [listKey]: (data[listKey] || []).filter((item) => item.id !== id),
     };
     setData(updated);
     await saveChanges(updated, "Entry removed!");
@@ -263,7 +284,6 @@ export default function AdminPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-      {/* Live Toast Notification */}
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-xs font-semibold text-white shadow-xl">
           <CheckCircle2 size={16} className="text-emerald-400" /> {toast}
@@ -285,7 +305,6 @@ export default function AdminPage() {
         </button>
       </div>
 
-      {/* Tabs */}
       <div className="mt-6 flex flex-wrap gap-2">
         {tabs.map((t) => (
           <button
@@ -302,7 +321,6 @@ export default function AdminPage() {
         ))}
       </div>
 
-      {/* TAB 1: Company Info & UI */}
       {tab === "general" && (
         <div className="mt-8 space-y-5 rounded-3xl border border-slate-200 bg-white p-7 shadow-sm">
           <h2 className="text-base font-bold text-slate-900">Contact & Website UI Settings</h2>
@@ -311,7 +329,7 @@ export default function AdminPage() {
             <div>
               <label className="text-xs font-semibold text-slate-600">Company Email</label>
               <input
-                value={data.company.email}
+                value={data.company.email || ""}
                 onChange={(e) => setData({ ...data, company: { ...data.company, email: e.target.value } })}
                 className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
               />
@@ -319,7 +337,7 @@ export default function AdminPage() {
             <div>
               <label className="text-xs font-semibold text-slate-600">Company Phone Number</label>
               <input
-                value={data.company.phone}
+                value={data.company.phone || ""}
                 onChange={(e) => setData({ ...data, company: { ...data.company, phone: e.target.value } })}
                 className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
               />
@@ -330,7 +348,7 @@ export default function AdminPage() {
             <div>
               <label className="text-xs font-semibold text-slate-600">Company Address</label>
               <input
-                value={data.company.address}
+                value={data.company.address || ""}
                 onChange={(e) => setData({ ...data, company: { ...data.company, address: e.target.value } })}
                 className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
               />
@@ -338,7 +356,7 @@ export default function AdminPage() {
             <div>
               <label className="text-xs font-semibold text-slate-600">YouTube Channel Link</label>
               <input
-                value={data.company.youtubeChannel}
+                value={data.company.youtubeChannel || ""}
                 onChange={(e) =>
                   setData({ ...data, company: { ...data.company, youtubeChannel: e.target.value } })
                 }
@@ -386,7 +404,7 @@ export default function AdminPage() {
           <div>
             <label className="text-xs font-semibold text-slate-600">Hero Headline</label>
             <input
-              value={data.company.tagline}
+              value={data.company.tagline || ""}
               onChange={(e) => setData({ ...data, company: { ...data.company, tagline: e.target.value } })}
               className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
             />
@@ -396,7 +414,7 @@ export default function AdminPage() {
             <label className="text-xs font-semibold text-slate-600">Hero Subtitle</label>
             <textarea
               rows={2}
-              value={data.company.heroSubtitle}
+              value={data.company.heroSubtitle || ""}
               onChange={(e) =>
                 setData({ ...data, company: { ...data.company, heroSubtitle: e.target.value } })
               }
@@ -441,14 +459,13 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* TAB 2: Media Agency (Thumbnails + Direct YouTube Links) */}
       {tab === "media" && (
         <div className="mt-8 space-y-6">
           <div className="space-y-3 rounded-3xl border border-slate-200 bg-white p-6">
             <label className="text-xs font-semibold text-slate-600">Media Agency Description</label>
             <textarea
               rows={3}
-              value={data.mediaAgency.description}
+              value={data.mediaAgency.description || ""}
               onChange={(e) =>
                 setData({
                   ...data,
@@ -498,9 +515,8 @@ export default function AdminPage() {
             </button>
           </form>
 
-          {/* Existing Media Boxes (Editable!) */}
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {data.mediaAgency.items.map((item) => (
+            {(data.mediaAgency.items || []).map((item) => (
               <div
                 key={item.id}
                 className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
@@ -523,28 +539,27 @@ export default function AdminPage() {
                 </div>
                 <div className="space-y-2.5 p-4">
                   <input
-                    value={item.title}
+                    value={item.title || ""}
                     onChange={(e) => updateItemField("mediaAgency", item.id, "title", e.target.value)}
                     className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold"
                   />
                   <input
-                    value={item.link}
+                    value={item.link || ""}
                     onChange={(e) => updateItemField("mediaAgency", item.id, "link", e.target.value)}
                     className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs text-slate-600"
                   />
                   <div className="flex items-center justify-between pt-1">
                     <button
                       onClick={() => saveChanges()}
-                      className="rounded-full bg-slate-900 px-3.5 py-1 text-[11px] font-semibold text-white"
+                      className="text-xs font-semibold text-[#004C97] hover:underline"
                     >
-                      Save
+                      Save Box
                     </button>
                     <button
                       onClick={() => deleteItem("mediaAgency", item.id)}
-                      className="text-red-500 hover:text-red-700"
-                      title="Delete"
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:underline"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={13} /> Delete
                     </button>
                   </div>
                 </div>
@@ -554,14 +569,13 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* TAB 3: AI Automation (Only Images — No Links) */}
       {tab === "ai" && (
         <div className="mt-8 space-y-6">
           <div className="space-y-3 rounded-3xl border border-slate-200 bg-white p-6">
             <label className="text-xs font-semibold text-slate-600">AI Automation Description</label>
             <textarea
               rows={3}
-              value={data.aiAutomation.description}
+              value={data.aiAutomation.description || ""}
               onChange={(e) =>
                 setData({
                   ...data,
@@ -570,28 +584,11 @@ export default function AdminPage() {
               }
               className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm"
             />
-            <label className="block pt-2 text-xs font-semibold text-slate-600">
-              Service Highlights (1 point per line)
-            </label>
-            <textarea
-              rows={4}
-              value={data.aiAutomation.highlights.join("\n")}
-              onChange={(e) =>
-                setData({
-                  ...data,
-                  aiAutomation: {
-                    ...data.aiAutomation,
-                    highlights: e.target.value.split("\n").filter((l) => l.trim() !== ""),
-                  },
-                })
-              }
-              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm"
-            />
             <button
               onClick={() => saveChanges()}
               className="inline-flex items-center gap-1.5 rounded-full bg-[#004C97] px-5 py-2 text-xs font-semibold text-white"
             >
-              <Save size={14} /> Save AI Details
+              <Save size={14} /> Save Description
             </button>
           </div>
 
@@ -599,9 +596,10 @@ export default function AdminPage() {
             onSubmit={(e) => addGalleryItem(e, "aiAutomation", newAi, setNewAi)}
             className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6"
           >
-            <h2 className="font-bold text-slate-900">Add AI Automation Image Box</h2>
+            <h2 className="font-bold text-slate-900">Upload AI Automation Photo</h2>
             <input
-              placeholder="Image Caption / Title (Optional)"
+              required
+              placeholder="Photo Caption / Title"
               value={newAi.title}
               onChange={(e) => setNewAi({ ...newAi, title: e.target.value })}
               className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm"
@@ -614,17 +612,14 @@ export default function AdminPage() {
               className="text-sm text-slate-600"
             />
             <button className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-5 py-2.5 text-xs font-semibold text-white hover:bg-[#004C97]">
-              <Plus size={15} /> Upload Showcase Image
+              <Plus size={15} /> Upload Photo
             </button>
           </form>
 
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {data.aiAutomation.items.map((item) => (
-              <div
-                key={item.id}
-                className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
-              >
-                <div className="relative aspect-[16/11] bg-slate-100">
+            {(data.aiAutomation.items || []).map((item) => (
+              <div key={item.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="relative aspect-[4/3] bg-slate-100">
                   <img src={item.image} alt={item.title} className="h-full w-full object-cover" />
                   <label className="absolute bottom-2 right-2 cursor-pointer rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold text-slate-800 shadow">
                     <span className="inline-flex items-center gap-1">
@@ -640,24 +635,18 @@ export default function AdminPage() {
                     />
                   </label>
                 </div>
-                <div className="flex items-center gap-2 p-4">
+                <div className="flex items-center justify-between gap-2 p-4">
                   <input
-                    value={item.title}
-                    placeholder="Caption"
+                    value={item.title || ""}
                     onChange={(e) => updateItemField("aiAutomation", item.id, "title", e.target.value)}
-                    className="flex-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold"
+                    onBlur={() => saveChanges()}
+                    className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium"
                   />
                   <button
-                    onClick={() => saveChanges()}
-                    className="rounded-full bg-slate-900 px-3 py-1 text-[11px] font-semibold text-white"
-                  >
-                    Save
-                  </button>
-                  <button
                     onClick={() => deleteItem("aiAutomation", item.id)}
-                    className="text-red-500"
+                    className="text-red-600 hover:text-red-800"
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={15} />
                   </button>
                 </div>
               </div>
@@ -666,16 +655,13 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* TAB 4: Digital Marketing (Only Images — No Links) */}
       {tab === "dm" && (
         <div className="mt-8 space-y-6">
           <div className="space-y-3 rounded-3xl border border-slate-200 bg-white p-6">
-            <label className="text-xs font-semibold text-slate-600">
-              Digital Marketing Description
-            </label>
+            <label className="text-xs font-semibold text-slate-600">Digital Marketing Description</label>
             <textarea
               rows={3}
-              value={data.digitalMarketing.description}
+              value={data.digitalMarketing.description || ""}
               onChange={(e) =>
                 setData({
                   ...data,
@@ -684,28 +670,11 @@ export default function AdminPage() {
               }
               className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm"
             />
-            <label className="block pt-2 text-xs font-semibold text-slate-600">
-              Service Highlights (1 point per line)
-            </label>
-            <textarea
-              rows={4}
-              value={data.digitalMarketing.highlights.join("\n")}
-              onChange={(e) =>
-                setData({
-                  ...data,
-                  digitalMarketing: {
-                    ...data.digitalMarketing,
-                    highlights: e.target.value.split("\n").filter((l) => l.trim() !== ""),
-                  },
-                })
-              }
-              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm"
-            />
             <button
               onClick={() => saveChanges()}
               className="inline-flex items-center gap-1.5 rounded-full bg-[#004C97] px-5 py-2 text-xs font-semibold text-white"
             >
-              <Save size={14} /> Save Marketing Details
+              <Save size={14} /> Save Description
             </button>
           </div>
 
@@ -713,9 +682,10 @@ export default function AdminPage() {
             onSubmit={(e) => addGalleryItem(e, "digitalMarketing", newDm, setNewDm)}
             className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6"
           >
-            <h2 className="font-bold text-slate-900">Add Digital Marketing Image Box</h2>
+            <h2 className="font-bold text-slate-900">Upload Digital Marketing Photo</h2>
             <input
-              placeholder="Image Caption / Title (Optional)"
+              required
+              placeholder="Campaign / Photo Title"
               value={newDm.title}
               onChange={(e) => setNewDm({ ...newDm, title: e.target.value })}
               className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm"
@@ -728,17 +698,14 @@ export default function AdminPage() {
               className="text-sm text-slate-600"
             />
             <button className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-5 py-2.5 text-xs font-semibold text-white hover:bg-[#004C97]">
-              <Plus size={15} /> Upload Showcase Image
+              <Plus size={15} /> Upload Photo
             </button>
           </form>
 
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {data.digitalMarketing.items.map((item) => (
-              <div
-                key={item.id}
-                className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
-              >
-                <div className="relative aspect-[16/11] bg-slate-100">
+            {(data.digitalMarketing.items || []).map((item) => (
+              <div key={item.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="relative aspect-[4/3] bg-slate-100">
                   <img src={item.image} alt={item.title} className="h-full w-full object-cover" />
                   <label className="absolute bottom-2 right-2 cursor-pointer rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold text-slate-800 shadow">
                     <span className="inline-flex items-center gap-1">
@@ -754,26 +721,18 @@ export default function AdminPage() {
                     />
                   </label>
                 </div>
-                <div className="flex items-center gap-2 p-4">
+                <div className="flex items-center justify-between gap-2 p-4">
                   <input
-                    value={item.title}
-                    placeholder="Caption"
-                    onChange={(e) =>
-                      updateItemField("digitalMarketing", item.id, "title", e.target.value)
-                    }
-                    className="flex-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold"
+                    value={item.title || ""}
+                    onChange={(e) => updateItemField("digitalMarketing", item.id, "title", e.target.value)}
+                    onBlur={() => saveChanges()}
+                    className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium"
                   />
                   <button
-                    onClick={() => saveChanges()}
-                    className="rounded-full bg-slate-900 px-3 py-1 text-[11px] font-semibold text-white"
-                  >
-                    Save
-                  </button>
-                  <button
                     onClick={() => deleteItem("digitalMarketing", item.id)}
-                    className="text-red-500"
+                    className="text-red-600 hover:text-red-800"
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={15} />
                   </button>
                 </div>
               </div>
@@ -782,7 +741,6 @@ export default function AdminPage() {
         </div>
       )}
 
-            {/* TAB: Reviews Management */}
       {tab === "reviews" && (
         <div className="mt-8 space-y-6">
           <form
@@ -790,11 +748,21 @@ export default function AdminPage() {
               e.preventDefault();
               const updated = {
                 ...data,
-                reviews: [{ id: Date.now().toString(), ...newReview }, ...(data.reviews || [])],
+                reviews: [
+                  {
+                    id: Date.now().toString(),
+                    name: newReview.name,
+                    role: newReview.role,
+                    service: newReview.service,
+                    rating: Number(newReview.rating),
+                    comment: newReview.comment,
+                  },
+                  ...(data.reviews || []),
+                ],
               };
               setData(updated);
               setNewReview({ name: "", role: "", service: "Media Agency", rating: 5, comment: "" });
-              await saveChanges(updated, "New review added!");
+              await saveChanges(updated, "Review added!");
             }}
             className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6"
           >
@@ -805,31 +773,32 @@ export default function AdminPage() {
                 placeholder="Client Name"
                 value={newReview.name}
                 onChange={(e) => setNewReview({ ...newReview, name: e.target.value })}
-                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm"
+                className="rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
               />
               <input
+                required
                 placeholder="Role / Company"
                 value={newReview.role}
                 onChange={(e) => setNewReview({ ...newReview, role: e.target.value })}
-                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm"
+                className="rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
               />
               <select
                 value={newReview.service}
                 onChange={(e) => setNewReview({ ...newReview, service: e.target.value })}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm"
+                className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm"
               >
-                <option value="Media Agency">Media Agency</option>
-                <option value="AI Automation">AI Automation</option>
-                <option value="Digital Marketing">Digital Marketing</option>
+                <option>Media Agency</option>
+                <option>AI Automation</option>
+                <option>Digital Marketing</option>
               </select>
             </div>
             <textarea
               required
               rows={2}
-              placeholder="Client review text..."
+              placeholder="Review comment..."
               value={newReview.comment}
               onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
-              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm"
+              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
             />
             <button className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-5 py-2.5 text-xs font-semibold text-white hover:bg-[#004C97]">
               <Plus size={15} /> Add Review
@@ -838,118 +807,37 @@ export default function AdminPage() {
 
           <div className="grid gap-4 sm:grid-cols-2">
             {(data.reviews || []).map((rev) => (
-              <div key={rev.id} className="rounded-2xl border border-slate-200 bg-white p-5 text-sm shadow-sm">
-                <div className="flex items-center justify-between">
+              <div key={rev.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-start justify-between">
                   <div>
                     <p className="font-bold text-slate-900">{rev.name}</p>
-                    <p className="text-xs text-slate-500">{rev.role} • {rev.service}</p>
+                    <p className="text-xs text-slate-500">
+                      {rev.role} • {rev.service}
+                    </p>
                   </div>
                   <button
                     onClick={async () => {
                       const updated = {
                         ...data,
-                        reviews: data.reviews.filter((r) => r.id !== rev.id),
+                        reviews: (data.reviews || []).filter((r) => r.id !== rev.id),
                       };
                       setData(updated);
                       await saveChanges(updated, "Review deleted!");
                     }}
                     className="text-red-500 hover:text-red-700"
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={15} />
                   </button>
                 </div>
-                <p className="mt-3 text-slate-700">&ldquo;{rev.comment}&rdquo;</p>
+                <p className="mt-2 text-sm text-slate-600">&ldquo;{rev.comment}&rdquo;</p>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* TAB 5: Enquiries & Job Applications */}
-      {tab === "inbox" && (
-        <div className="mt-8 grid gap-8 lg:grid-cols-2">
-          <div className="space-y-3">
-            <h2 className="font-bold text-slate-900">
-              Public Enquiries ({data.enquiries?.length || 0})
-            </h2>
-            {data.enquiries?.length === 0 && (
-              <p className="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-sm text-slate-500">
-                No enquiries received yet.
-              </p>
-            )}
-            {data.enquiries?.map((e) => (
-              <div key={e.id} className="rounded-2xl border border-slate-200 bg-white p-5 text-sm shadow-sm">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-bold text-slate-900">{e.name}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-semibold text-[#004C97]">
-                      {e.service}
-                    </span>
-                    <button
-                      onClick={() => deleteInboxItem("enquiries", e.id)}
-                      className="text-slate-400 hover:text-red-500"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
-                </div>
-                <p className="mt-1 text-xs text-slate-500">
-                  {e.email} • {e.phone} • {e.createdAt}
-                </p>
-                <p className="mt-3 text-slate-700">{e.message}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="space-y-3">
-            <h2 className="font-bold text-slate-900">
-              Job Applications ({data.applications?.length || 0})
-            </h2>
-            {data.applications?.length === 0 && (
-              <p className="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-sm text-slate-500">
-                No job applications received yet.
-              </p>
-            )}
-            {data.applications?.map((a) => (
-              <div key={a.id} className="rounded-2xl border border-slate-200 bg-white p-5 text-sm shadow-sm">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-bold text-slate-900">{a.name}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
-                      {a.role}
-                    </span>
-                    <button
-                      onClick={() => deleteInboxItem("applications", a.id)}
-                      className="text-slate-400 hover:text-red-500"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
-                </div>
-                <p className="mt-1 text-xs text-slate-500">
-                  {a.email} • {a.phone} • {a.createdAt}
-                </p>
-                {a.note && <p className="mt-3 text-slate-700">{a.note}</p>}
-                {a.resumeUrl && (
-                  <a
-                    href={a.resumeUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3.5 py-1.5 text-xs font-semibold text-[#004C97] hover:bg-sky-100"
-                  >
-                    <FileText size={14} /> View / Download Resume
-                  </a>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-            {/* TAB: Employees & Attendance */}
       {tab === "employees" && (
         <div className="mt-8 space-y-8">
-          {/* Add New Employee Form */}
           <form
             onSubmit={async (e) => {
               e.preventDefault();
@@ -1011,7 +899,6 @@ export default function AdminPage() {
             </button>
           </form>
 
-          {/* Employee List */}
           <div className="grid gap-4 sm:grid-cols-3">
             {(data.employees || []).map((emp) => (
               <div key={emp.id} className="rounded-2xl border border-slate-200 bg-white p-4 text-sm shadow-sm">
@@ -1028,7 +915,7 @@ export default function AdminPage() {
                     onClick={async () => {
                       const updated = {
                         ...data,
-                        employees: data.employees.filter((x) => x.id !== emp.id),
+                        employees: (data.employees || []).filter((x) => x.id !== emp.id),
                       };
                       setData(updated);
                       await saveChanges(updated, "Employee removed!");
@@ -1042,7 +929,6 @@ export default function AdminPage() {
             ))}
           </div>
 
-          {/* All Attendance Logs */}
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="font-bold text-slate-900">
               Employee Attendance Records ({data.attendance?.length || 0})
@@ -1063,12 +949,12 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {data.attendance.map((rec) => (
+                    {(data.attendance || []).map((rec) => (
                       <tr key={rec.id}>
                         <td className="py-3 pr-4 font-medium text-slate-900">{rec.date}</td>
                         <td className="py-3 pr-4 font-semibold text-[#004C97]">{rec.employeeId}</td>
                         <td className="py-3 pr-4 text-slate-800">{rec.name}</td>
-                        <td className="py-3 pr-4 text-emerald-700 font-medium">{rec.checkIn}</td>
+                        <td className="py-3 pr-4 font-medium text-emerald-700">{rec.checkIn}</td>
                         <td className="py-3 pr-4 text-slate-600">{rec.checkOut || "Active"}</td>
                         <td className="py-3 pr-4 text-xs text-slate-500">
                           {rec.mode} {rec.note ? `• ${rec.note}` : ""}
@@ -1083,39 +969,119 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* TAB 6: Change Admin Username & Password */}
+      {tab === "inbox" && (
+        <div className="mt-8 grid gap-8 lg:grid-cols-2">
+          <div className="space-y-4">
+            <h2 className="text-base font-bold text-slate-900">
+              Client Enquiries ({data.enquiries?.length || 0})
+            </h2>
+            {(data.enquiries || []).length === 0 && (
+              <p className="text-sm text-slate-500">No enquiries yet.</p>
+            )}
+            {(data.enquiries || []).map((enq) => (
+              <div key={enq.id} className="rounded-2xl border border-slate-200 bg-white p-5 text-sm shadow-sm">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-bold text-slate-900">{enq.name}</p>
+                    <p className="text-xs text-[#004C97] font-medium">{enq.service}</p>
+                  </div>
+                  <button
+                    onClick={() => deleteInboxItem("enquiries", enq.id)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+                <p className="mt-2 text-xs text-slate-600">
+                  {enq.email} • {enq.phone}
+                </p>
+                {enq.company && <p className="text-xs text-slate-500">Company: {enq.company}</p>}
+                <p className="mt-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-700">{enq.message}</p>
+                <p className="mt-2 text-[11px] text-slate-400">{enq.date}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-4">
+            <h2 className="text-base font-bold text-slate-900">
+              Job Applications & Resumes ({data.applications?.length || 0})
+            </h2>
+            {(data.applications || []).length === 0 && (
+              <p className="text-sm text-slate-500">No applications yet.</p>
+            )}
+            {(data.applications || []).map((app) => (
+              <div key={app.id} className="rounded-2xl border border-slate-200 bg-white p-5 text-sm shadow-sm">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-bold text-slate-900">{app.name}</p>
+                    <p className="text-xs text-[#F7941D] font-medium">{app.role}</p>
+                  </div>
+                  <button
+                    onClick={() => deleteInboxItem("applications", app.id)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+                <p className="mt-2 text-xs text-slate-600">
+                  {app.email} • {app.phone}
+                </p>
+                {app.portfolio && (
+                  <p className="mt-1 text-xs text-slate-500 break-all">Portfolio: {app.portfolio}</p>
+                )}
+                {app.note && <p className="mt-2 text-xs text-slate-700">{app.note}</p>}
+                {app.resumeUrl && (
+                  <a
+                    href={app.resumeUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3.5 py-1.5 text-xs font-semibold text-[#004C97] hover:bg-sky-100"
+                  >
+                    <FileText size={14} /> View / Download Resume ({app.resumeName || "File"})
+                  </a>
+                )}
+                <p className="mt-2 text-[11px] text-slate-400">{app.date}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {tab === "security" && (
-        <form
-          onSubmit={handlePasswordUpdate}
-          className="mt-8 max-w-md space-y-4 rounded-3xl border border-slate-200 bg-white p-7 shadow-sm"
-        >
-          <div className="flex items-center gap-2 text-base font-bold text-slate-900">
-            <KeyRound size={18} className="text-[#004C97]" /> Update Admin Login Credentials
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-slate-600">Admin Username</label>
-            <input
-              required
-              value={newPass.username}
-              onChange={(e) => setNewPass({ ...newPass, username: e.target.value })}
-              className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-slate-600">New Password</label>
-            <input
-              required
-              type="password"
-              placeholder="Enter new strong password"
-              value={newPass.password}
-              onChange={(e) => setNewPass({ ...newPass, password: e.target.value })}
-              className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
-            />
-          </div>
-          <button className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-6 py-2.5 text-xs font-semibold text-white hover:bg-[#004C97]">
-            <Save size={14} /> Update Password
-          </button>
-        </form>
+        <div className="mt-8 max-w-lg">
+          <form
+            onSubmit={handlePasswordUpdate}
+            className="space-y-4 rounded-3xl border border-slate-200 bg-white p-7 shadow-sm"
+          >
+            <div className="flex items-center gap-2 text-base font-bold text-slate-900">
+              <KeyRound size={18} className="text-[#004C97]" />
+              Change Admin Username & Password
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-600">New Username</label>
+              <input
+                required
+                value={newPass.username}
+                onChange={(e) => setNewPass({ ...newPass, username: e.target.value })}
+                className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-600">New Password</label>
+              <input
+                required
+                type="password"
+                placeholder="Enter new strong password"
+                value={newPass.password}
+                onChange={(e) => setNewPass({ ...newPass, password: e.target.value })}
+                className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
+              />
+            </div>
+            <button className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-6 py-2.5 text-xs font-semibold text-white hover:bg-[#004C97]">
+              <Save size={15} /> Update Credentials
+            </button>
+          </form>
+        </div>
       )}
     </div>
   );
