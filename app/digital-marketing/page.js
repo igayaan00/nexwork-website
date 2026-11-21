@@ -8,7 +8,15 @@ export const dynamic = "force-dynamic";
 
 export default async function DigitalMarketingPage() {
   const data = await readData();
-  const { digitalMarketing } = data;
+  const digitalMarketing = data?.digitalMarketing || {};
+  const title = digitalMarketing.title || "Digital Marketing";
+  const description = digitalMarketing.description || "";
+  const highlights = Array.isArray(digitalMarketing.highlights)
+    ? digitalMarketing.highlights
+    : [];
+  const items = Array.isArray(digitalMarketing.items)
+    ? digitalMarketing.items
+    : [];
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
@@ -25,10 +33,10 @@ export default async function DigitalMarketingPage() {
             NEXWORK Growth Division
           </span>
           <h1 className="mt-4 text-4xl font-bold tracking-tight text-slate-950 sm:text-5xl">
-            {digitalMarketing.title}
+            {title}
           </h1>
           <p className="mt-5 text-base leading-relaxed text-slate-600">
-            {digitalMarketing.description}
+            {description}
           </p>
         </div>
       </FadeIn>
@@ -39,7 +47,7 @@ export default async function DigitalMarketingPage() {
           What We Deliver
         </h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          {digitalMarketing.highlights.map((point, i) => (
+          {highlights.map((point, i) => (
             <div
               key={i}
               className="flex items-center gap-3.5 rounded-2xl border border-slate-200/80 bg-white px-5 py-4 text-sm font-medium text-slate-800 shadow-sm"
@@ -57,7 +65,7 @@ export default async function DigitalMarketingPage() {
           <h2 className="text-xl font-bold text-slate-950">Campaigns & Visual Creatives</h2>
         </div>
         <ImageLightboxGrid
-          items={digitalMarketing.items}
+          items={items}
           emptyText="Admin Panel se Digital Marketing ke showcase images upload karein."
         />
       </div>
