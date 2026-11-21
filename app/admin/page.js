@@ -13,6 +13,62 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 
+const EMPTY_SITE = {
+  company: {
+    email: "",
+    phone: "",
+    address: "",
+    youtubeChannel: "",
+    instagram: "",
+    facebook: "",
+    linkedin: "",
+    tagline: "",
+    heroSubtitle: "",
+    heroImage: "",
+  },
+  mediaAgency: { description: "", items: [] },
+  aiAutomation: { description: "", items: [] },
+  digitalMarketing: { description: "", items: [] },
+  reviews: [],
+  enquiries: [],
+  applications: [],
+  employees: [],
+  attendance: [],
+  adminAuth: { username: "admin" },
+};
+
+function normalizeSiteData(raw) {
+  const d = raw && typeof raw === "object" ? raw : {};
+  return {
+    ...EMPTY_SITE,
+    ...d,
+    company: {
+      ...EMPTY_SITE.company,
+      ...(d.company && typeof d.company === "object" ? d.company : {}),
+    },
+    mediaAgency: {
+      description: d.mediaAgency?.description || "",
+      items: Array.isArray(d.mediaAgency?.items) ? d.mediaAgency.items : [],
+    },
+    aiAutomation: {
+      description: d.aiAutomation?.description || "",
+      items: Array.isArray(d.aiAutomation?.items) ? d.aiAutomation.items : [],
+    },
+    digitalMarketing: {
+      description: d.digitalMarketing?.description || "",
+      items: Array.isArray(d.digitalMarketing?.items) ? d.digitalMarketing.items : [],
+    },
+    reviews: Array.isArray(d.reviews) ? d.reviews : [],
+    enquiries: Array.isArray(d.enquiries) ? d.enquiries : [],
+    applications: Array.isArray(d.applications) ? d.applications : [],
+    employees: Array.isArray(d.employees) ? d.employees : [],
+    attendance: Array.isArray(d.attendance) ? d.attendance : [],
+    adminAuth: {
+      username: d.adminAuth?.username || "admin",
+    },
+  };
+}
+
 export default function AdminPage() {
   const [auth, setAuth] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -22,11 +78,16 @@ export default function AdminPage() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
 
-  // New item forms
   const [newMedia, setNewMedia] = useState({ title: "", link: "", file: null });
   const [newAi, setNewAi] = useState({ title: "", file: null });
   const [newDm, setNewDm] = useState({ title: "", file: null });
-  const [newReview, setNewReview] = useState({ name: "", role: "", service: "Media Agency", rating: 5, comment: "" });
+  const [newReview, setNewReview] = useState({
+    name: "",
+    role: "",
+    service: "Media Agency",
+    rating: 5,
+    comment: "",
+  });
   const [newPass, setNewPass] = useState({ username: "", password: "" });
   const [newEmp, setNewEmp] = useState({ employeeId: "", name: "", role: "", password: "" });
 
@@ -36,35 +97,27 @@ export default function AdminPage() {
   }
 
   async function loadAll() {
-    const a = await fetch("/api/auth").then((r) => r.json());
-    setAuth(a.authenticated);
-    if (a.authenticated) {
-      const site = await fetch("/api/site").then((r) => r.json());
-      const safeSite = {
-        ...site,
-        company: site.company || {},
-        mediaAgency: {
-          description: site.mediaAgency?.description || "",
-          items: site.mediaAgency?.items || [],
-        },
-        aiAutomation: {
-          description: site.aiAutomation?.description || "",
-          items: site.aiAutomation?.items || [],
-        },
-        digitalMarketing: {
-          description: site.digitalMarketing?.description || "",
-          items: site.digitalMarketing?.items || [],
-        },
-        reviews: site.reviews || [],
-        enquiries: site.enquiries || [],
-        applications: site.applications || [],
-        employees: site.employees || [],
-        attendance: site.attendance || [],
-      };
-      setData(safeSite);
-      setNewPass({ username: safeSite.adminAuth?.username || "admin", password: "" });
+    try {
+      const authRes = await fetch("/api/auth", { cache: "no-store" });
+      const a = authRes.ok ? await authRes.json() : { authenticated: false };
+      const isAuthed = Boolean(a?.authenticated);
+      setAuth(isAuthed);
+
+      if (isAuthed) {
+        const siteRes = await fetch("/api/site", { cache: "no-store" });
+        const rawSite = siteRes.ok ? await siteRes.json() : {};
+        const safeSite = normalizeSiteData(rawSite);
+        setData(safeSite);
+        setNewPass({ username: safeSite.adminAuth?.username || "admin", password: "" });
+      } else {
+        setData(null);
+      }
+    } catch (err) {
+      console.error("Failed to load admin state:", err);
+      setData(normalizeSiteData({}));
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   useEffect(() => {
@@ -79,6 +132,7 @@ export default function AdminPage() {
       body: JSON.stringify(creds),
     });
     if (res.ok) {
+      setLoading(true);
       await loadAll();
     } else {
       alert("Invalid username or password");
@@ -96,16 +150,17 @@ export default function AdminPage() {
     fd.append("file", file);
     const res = await fetch("/api/upload", { method: "POST", body: fd });
     const out = await res.json();
-    if (!res.ok) throw new Error(out.error || "Upload failed");
+    if (!res.ok) throw new Error(out?.error || "Upload failed");
     return out.url;
   }
 
   async function saveChanges(updatedData = data, successMsg = "Changes saved live!") {
+    const payload = normalizeSiteData(updatedData);
     setSaving(true);
     const res = await fetch("/api/site", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updatedData),
+      body: JSON.stringify(payload),
     });
     setSaving(false);
     if (res.ok) {
@@ -120,13 +175,19 @@ export default function AdminPage() {
     if (!newMedia.file) return alert("Please select a thumbnail image");
     try {
       const thumbnail = await uploadFile(newMedia.file);
+      const current = normalizeSiteData(data);
       const updated = {
-        ...data,
+        ...current,
         mediaAgency: {
-          ...data.mediaAgency,
+          ...current.mediaAgency,
           items: [
-            { id: Date.now().toString(), title: newMedia.title, link: newMedia.link, thumbnail },
-            ...(data.mediaAgency.items || []),
+            {
+              id: Date.now().toString(),
+              title: newMedia.title,
+              link: newMedia.link,
+              thumbnail,
+            },
+            ...current.mediaAgency.items,
           ],
         },
       };
@@ -144,11 +205,13 @@ export default function AdminPage() {
     if (!stateObj.file) return alert("Please select an image");
     try {
       const image = await uploadFile(stateObj.file);
+      const current = normalizeSiteData(data);
+      const sec = current[sectionKey] || { description: "", items: [] };
       const updated = {
-        ...data,
+        ...current,
         [sectionKey]: {
-          ...data[sectionKey],
-          items: [{ id: Date.now().toString(), title: stateObj.title, image }, ...(data[sectionKey].items || [])],
+          ...sec,
+          items: [{ id: Date.now().toString(), title: stateObj.title, image }, ...sec.items],
         },
       };
       setData(updated);
@@ -164,11 +227,13 @@ export default function AdminPage() {
     if (!file) return;
     try {
       const url = await uploadFile(file);
+      const current = normalizeSiteData(data);
+      const sec = current[sectionKey] || { description: "", items: [] };
       const updated = {
-        ...data,
+        ...current,
         [sectionKey]: {
-          ...data[sectionKey],
-          items: (data[sectionKey].items || []).map((item) =>
+          ...sec,
+          items: sec.items.map((item) =>
             item.id === id ? { ...item, [fieldName]: url } : item
           ),
         },
@@ -181,11 +246,13 @@ export default function AdminPage() {
   }
 
   function updateItemField(sectionKey, id, field, value) {
+    const current = normalizeSiteData(data);
+    const sec = current[sectionKey] || { description: "", items: [] };
     setData({
-      ...data,
+      ...current,
       [sectionKey]: {
-        ...data[sectionKey],
-        items: (data[sectionKey].items || []).map((item) =>
+        ...sec,
+        items: sec.items.map((item) =>
           item.id === id ? { ...item, [field]: value } : item
         ),
       },
@@ -193,11 +260,13 @@ export default function AdminPage() {
   }
 
   async function deleteItem(sectionKey, id) {
+    const current = normalizeSiteData(data);
+    const sec = current[sectionKey] || { description: "", items: [] };
     const updated = {
-      ...data,
+      ...current,
       [sectionKey]: {
-        ...data[sectionKey],
-        items: (data[sectionKey].items || []).filter((i) => i.id !== id),
+        ...sec,
+        items: sec.items.filter((i) => i.id !== id),
       },
     };
     setData(updated);
@@ -205,9 +274,10 @@ export default function AdminPage() {
   }
 
   async function deleteInboxItem(listKey, id) {
+    const current = normalizeSiteData(data);
     const updated = {
-      ...data,
-      [listKey]: (data[listKey] || []).filter((item) => item.id !== id),
+      ...current,
+      [listKey]: (current[listKey] || []).filter((item) => item.id !== id),
     };
     setData(updated);
     await saveChanges(updated, "Entry removed!");
@@ -215,10 +285,16 @@ export default function AdminPage() {
 
   async function handlePasswordUpdate(e) {
     e.preventDefault();
-    if (!newPass.username || !newPass.password) return alert("Enter both username and new password");
+    if (!newPass.username || !newPass.password) {
+      return alert("Enter both username and new password");
+    }
+    const current = normalizeSiteData(data);
     const updated = {
-      ...data,
-      adminAuth: { username: newPass.username.trim(), password: newPass.password.trim() },
+      ...current,
+      adminAuth: {
+        username: newPass.username.trim(),
+        password: newPass.password.trim(),
+      },
     };
     setData(updated);
     await saveChanges(updated, "Admin login credentials updated!");
@@ -226,7 +302,11 @@ export default function AdminPage() {
   }
 
   if (loading) {
-    return <div className="p-20 text-center text-sm text-slate-500">Loading Admin Panel...</div>;
+    return (
+      <div className="p-20 text-center text-sm text-slate-500">
+        Loading Admin Panel...
+      </div>
+    );
   }
 
   if (!auth) {
@@ -268,16 +348,18 @@ export default function AdminPage() {
     );
   }
 
+  const safe = normalizeSiteData(data);
+
   const tabs = [
     { id: "general", label: "Company Info & UI" },
     { id: "media", label: "Media Agency" },
     { id: "ai", label: "AI Automation" },
     { id: "dm", label: "Digital Marketing" },
-    { id: "reviews", label: `Reviews (${data.reviews?.length || 0})` },
-    { id: "employees", label: `Employees (${data.employees?.length || 0})` },
+    { id: "reviews", label: `Reviews (${safe.reviews.length})` },
+    { id: "employees", label: `Employees (${safe.employees.length})` },
     {
       id: "inbox",
-      label: `Inbox (${(data.enquiries?.length || 0) + (data.applications?.length || 0)})`,
+      label: `Inbox (${safe.enquiries.length + safe.applications.length})`,
     },
     { id: "security", label: "Security" },
   ];
@@ -329,16 +411,20 @@ export default function AdminPage() {
             <div>
               <label className="text-xs font-semibold text-slate-600">Company Email</label>
               <input
-                value={data.company.email || ""}
-                onChange={(e) => setData({ ...data, company: { ...data.company, email: e.target.value } })}
+                value={safe.company.email}
+                onChange={(e) =>
+                  setData({ ...safe, company: { ...safe.company, email: e.target.value } })
+                }
                 className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
               />
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-600">Company Phone Number</label>
               <input
-                value={data.company.phone || ""}
-                onChange={(e) => setData({ ...data, company: { ...data.company, phone: e.target.value } })}
+                value={safe.company.phone}
+                onChange={(e) =>
+                  setData({ ...safe, company: { ...safe.company, phone: e.target.value } })
+                }
                 className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
               />
             </div>
@@ -348,17 +434,22 @@ export default function AdminPage() {
             <div>
               <label className="text-xs font-semibold text-slate-600">Company Address</label>
               <input
-                value={data.company.address || ""}
-                onChange={(e) => setData({ ...data, company: { ...data.company, address: e.target.value } })}
+                value={safe.company.address}
+                onChange={(e) =>
+                  setData({ ...safe, company: { ...safe.company, address: e.target.value } })
+                }
                 className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
               />
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-600">YouTube Channel Link</label>
               <input
-                value={data.company.youtubeChannel || ""}
+                value={safe.company.youtubeChannel}
                 onChange={(e) =>
-                  setData({ ...data, company: { ...data.company, youtubeChannel: e.target.value } })
+                  setData({
+                    ...safe,
+                    company: { ...safe.company, youtubeChannel: e.target.value },
+                  })
                 }
                 className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
               />
@@ -369,9 +460,9 @@ export default function AdminPage() {
             <div>
               <label className="text-xs font-semibold text-slate-600">Instagram URL</label>
               <input
-                value={data.company.instagram || ""}
+                value={safe.company.instagram}
                 onChange={(e) =>
-                  setData({ ...data, company: { ...data.company, instagram: e.target.value } })
+                  setData({ ...safe, company: { ...safe.company, instagram: e.target.value } })
                 }
                 placeholder="https://instagram.com/..."
                 className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
@@ -380,9 +471,9 @@ export default function AdminPage() {
             <div>
               <label className="text-xs font-semibold text-slate-600">Facebook URL</label>
               <input
-                value={data.company.facebook || ""}
+                value={safe.company.facebook}
                 onChange={(e) =>
-                  setData({ ...data, company: { ...data.company, facebook: e.target.value } })
+                  setData({ ...safe, company: { ...safe.company, facebook: e.target.value } })
                 }
                 placeholder="https://facebook.com/..."
                 className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
@@ -391,9 +482,9 @@ export default function AdminPage() {
             <div>
               <label className="text-xs font-semibold text-slate-600">LinkedIn URL</label>
               <input
-                value={data.company.linkedin || ""}
+                value={safe.company.linkedin}
                 onChange={(e) =>
-                  setData({ ...data, company: { ...data.company, linkedin: e.target.value } })
+                  setData({ ...safe, company: { ...safe.company, linkedin: e.target.value } })
                 }
                 placeholder="https://linkedin.com/company/..."
                 className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
@@ -404,8 +495,10 @@ export default function AdminPage() {
           <div>
             <label className="text-xs font-semibold text-slate-600">Hero Headline</label>
             <input
-              value={data.company.tagline || ""}
-              onChange={(e) => setData({ ...data, company: { ...data.company, tagline: e.target.value } })}
+              value={safe.company.tagline}
+              onChange={(e) =>
+                setData({ ...safe, company: { ...safe.company, tagline: e.target.value } })
+              }
               className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
             />
           </div>
@@ -414,9 +507,12 @@ export default function AdminPage() {
             <label className="text-xs font-semibold text-slate-600">Hero Subtitle</label>
             <textarea
               rows={2}
-              value={data.company.heroSubtitle || ""}
+              value={safe.company.heroSubtitle}
               onChange={(e) =>
-                setData({ ...data, company: { ...data.company, heroSubtitle: e.target.value } })
+                setData({
+                  ...safe,
+                  company: { ...safe.company, heroSubtitle: e.target.value },
+                })
               }
               className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
             />
@@ -433,14 +529,19 @@ export default function AdminPage() {
                 onChange={async (e) => {
                   if (!e.target.files?.[0]) return;
                   const url = await uploadFile(e.target.files[0]);
-                  setData({ ...data, company: { ...data.company, heroImage: url } });
+                  setData({
+                    ...safe,
+                    company: { ...safe.company, heroImage: url },
+                  });
                 }}
                 className="text-xs text-slate-600"
               />
-              {data.company.heroImage && (
+              {safe.company.heroImage && (
                 <button
                   type="button"
-                  onClick={() => setData({ ...data, company: { ...data.company, heroImage: "" } })}
+                  onClick={() =>
+                    setData({ ...safe, company: { ...safe.company, heroImage: "" } })
+                  }
                   className="text-xs font-semibold text-red-600 underline"
                 >
                   Remove Banner Photo
@@ -450,7 +551,7 @@ export default function AdminPage() {
           </div>
 
           <button
-            onClick={() => saveChanges()}
+            onClick={() => saveChanges(safe)}
             disabled={saving}
             className="inline-flex items-center gap-2 rounded-full bg-[#004C97] px-6 py-2.5 text-sm font-semibold text-white hover:bg-slate-900"
           >
@@ -462,20 +563,22 @@ export default function AdminPage() {
       {tab === "media" && (
         <div className="mt-8 space-y-6">
           <div className="space-y-3 rounded-3xl border border-slate-200 bg-white p-6">
-            <label className="text-xs font-semibold text-slate-600">Media Agency Description</label>
+            <label className="text-xs font-semibold text-slate-600">
+              Media Agency Description
+            </label>
             <textarea
               rows={3}
-              value={data.mediaAgency.description || ""}
+              value={safe.mediaAgency.description}
               onChange={(e) =>
                 setData({
-                  ...data,
-                  mediaAgency: { ...data.mediaAgency, description: e.target.value },
+                  ...safe,
+                  mediaAgency: { ...safe.mediaAgency, description: e.target.value },
                 })
               }
               className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm"
             />
             <button
-              onClick={() => saveChanges()}
+              onClick={() => saveChanges(safe)}
               className="inline-flex items-center gap-1.5 rounded-full bg-[#004C97] px-5 py-2 text-xs font-semibold text-white"
             >
               <Save size={14} /> Save Description
@@ -507,7 +610,9 @@ export default function AdminPage() {
               required
               type="file"
               accept="image/*"
-              onChange={(e) => setNewMedia({ ...newMedia, file: e.target.files?.[0] || null })}
+              onChange={(e) =>
+                setNewMedia({ ...newMedia, file: e.target.files?.[0] || null })
+              }
               className="text-sm text-slate-600"
             />
             <button className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-5 py-2.5 text-xs font-semibold text-white hover:bg-[#004C97]">
@@ -516,13 +621,17 @@ export default function AdminPage() {
           </form>
 
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {(data.mediaAgency.items || []).map((item) => (
+            {safe.mediaAgency.items.map((item) => (
               <div
                 key={item.id}
                 className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
               >
                 <div className="relative aspect-video bg-slate-100">
-                  <img src={item.thumbnail} alt={item.title} className="h-full w-full object-cover" />
+                  <img
+                    src={item.thumbnail}
+                    alt={item.title || "Media thumbnail"}
+                    className="h-full w-full object-cover"
+                  />
                   <label className="absolute bottom-2 right-2 cursor-pointer rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold text-slate-800 shadow">
                     <span className="inline-flex items-center gap-1">
                       <ImageIcon size={12} /> Replace
@@ -532,7 +641,12 @@ export default function AdminPage() {
                       accept="image/*"
                       className="hidden"
                       onChange={(e) =>
-                        replaceItemImage("mediaAgency", item.id, "thumbnail", e.target.files?.[0])
+                        replaceItemImage(
+                          "mediaAgency",
+                          item.id,
+                          "thumbnail",
+                          e.target.files?.[0]
+                        )
                       }
                     />
                   </label>
@@ -540,17 +654,21 @@ export default function AdminPage() {
                 <div className="space-y-2.5 p-4">
                   <input
                     value={item.title || ""}
-                    onChange={(e) => updateItemField("mediaAgency", item.id, "title", e.target.value)}
+                    onChange={(e) =>
+                      updateItemField("mediaAgency", item.id, "title", e.target.value)
+                    }
                     className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold"
                   />
                   <input
                     value={item.link || ""}
-                    onChange={(e) => updateItemField("mediaAgency", item.id, "link", e.target.value)}
+                    onChange={(e) =>
+                      updateItemField("mediaAgency", item.id, "link", e.target.value)
+                    }
                     className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs text-slate-600"
                   />
                   <div className="flex items-center justify-between pt-1">
                     <button
-                      onClick={() => saveChanges()}
+                      onClick={() => saveChanges(safe)}
                       className="text-xs font-semibold text-[#004C97] hover:underline"
                     >
                       Save Box
@@ -572,20 +690,22 @@ export default function AdminPage() {
       {tab === "ai" && (
         <div className="mt-8 space-y-6">
           <div className="space-y-3 rounded-3xl border border-slate-200 bg-white p-6">
-            <label className="text-xs font-semibold text-slate-600">AI Automation Description</label>
+            <label className="text-xs font-semibold text-slate-600">
+              AI Automation Description
+            </label>
             <textarea
               rows={3}
-              value={data.aiAutomation.description || ""}
+              value={safe.aiAutomation.description}
               onChange={(e) =>
                 setData({
-                  ...data,
-                  aiAutomation: { ...data.aiAutomation, description: e.target.value },
+                  ...safe,
+                  aiAutomation: { ...safe.aiAutomation, description: e.target.value },
                 })
               }
               className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm"
             />
             <button
-              onClick={() => saveChanges()}
+              onClick={() => saveChanges(safe)}
               className="inline-flex items-center gap-1.5 rounded-full bg-[#004C97] px-5 py-2 text-xs font-semibold text-white"
             >
               <Save size={14} /> Save Description
@@ -608,7 +728,9 @@ export default function AdminPage() {
               required
               type="file"
               accept="image/*"
-              onChange={(e) => setNewAi({ ...newAi, file: e.target.files?.[0] || null })}
+              onChange={(e) =>
+                setNewAi({ ...newAi, file: e.target.files?.[0] || null })
+              }
               className="text-sm text-slate-600"
             />
             <button className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-5 py-2.5 text-xs font-semibold text-white hover:bg-[#004C97]">
@@ -617,10 +739,17 @@ export default function AdminPage() {
           </form>
 
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {(data.aiAutomation.items || []).map((item) => (
-              <div key={item.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            {safe.aiAutomation.items.map((item) => (
+              <div
+                key={item.id}
+                className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+              >
                 <div className="relative aspect-[4/3] bg-slate-100">
-                  <img src={item.image} alt={item.title} className="h-full w-full object-cover" />
+                  <img
+                    src={item.image}
+                    alt={item.title || "AI showcase"}
+                    className="h-full w-full object-cover"
+                  />
                   <label className="absolute bottom-2 right-2 cursor-pointer rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold text-slate-800 shadow">
                     <span className="inline-flex items-center gap-1">
                       <ImageIcon size={12} /> Replace
@@ -630,7 +759,12 @@ export default function AdminPage() {
                       accept="image/*"
                       className="hidden"
                       onChange={(e) =>
-                        replaceItemImage("aiAutomation", item.id, "image", e.target.files?.[0])
+                        replaceItemImage(
+                          "aiAutomation",
+                          item.id,
+                          "image",
+                          e.target.files?.[0]
+                        )
                       }
                     />
                   </label>
@@ -638,8 +772,10 @@ export default function AdminPage() {
                 <div className="flex items-center justify-between gap-2 p-4">
                   <input
                     value={item.title || ""}
-                    onChange={(e) => updateItemField("aiAutomation", item.id, "title", e.target.value)}
-                    onBlur={() => saveChanges()}
+                    onChange={(e) =>
+                      updateItemField("aiAutomation", item.id, "title", e.target.value)
+                    }
+                    onBlur={() => saveChanges(safe)}
                     className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium"
                   />
                   <button
@@ -658,20 +794,25 @@ export default function AdminPage() {
       {tab === "dm" && (
         <div className="mt-8 space-y-6">
           <div className="space-y-3 rounded-3xl border border-slate-200 bg-white p-6">
-            <label className="text-xs font-semibold text-slate-600">Digital Marketing Description</label>
+            <label className="text-xs font-semibold text-slate-600">
+              Digital Marketing Description
+            </label>
             <textarea
               rows={3}
-              value={data.digitalMarketing.description || ""}
+              value={safe.digitalMarketing.description}
               onChange={(e) =>
                 setData({
-                  ...data,
-                  digitalMarketing: { ...data.digitalMarketing, description: e.target.value },
+                  ...safe,
+                  digitalMarketing: {
+                    ...safe.digitalMarketing,
+                    description: e.target.value,
+                  },
                 })
               }
               className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm"
             />
             <button
-              onClick={() => saveChanges()}
+              onClick={() => saveChanges(safe)}
               className="inline-flex items-center gap-1.5 rounded-full bg-[#004C97] px-5 py-2 text-xs font-semibold text-white"
             >
               <Save size={14} /> Save Description
@@ -694,7 +835,9 @@ export default function AdminPage() {
               required
               type="file"
               accept="image/*"
-              onChange={(e) => setNewDm({ ...newDm, file: e.target.files?.[0] || null })}
+              onChange={(e) =>
+                setNewDm({ ...newDm, file: e.target.files?.[0] || null })
+              }
               className="text-sm text-slate-600"
             />
             <button className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-5 py-2.5 text-xs font-semibold text-white hover:bg-[#004C97]">
@@ -703,10 +846,17 @@ export default function AdminPage() {
           </form>
 
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {(data.digitalMarketing.items || []).map((item) => (
-              <div key={item.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            {safe.digitalMarketing.items.map((item) => (
+              <div
+                key={item.id}
+                className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+              >
                 <div className="relative aspect-[4/3] bg-slate-100">
-                  <img src={item.image} alt={item.title} className="h-full w-full object-cover" />
+                  <img
+                    src={item.image}
+                    alt={item.title || "DM showcase"}
+                    className="h-full w-full object-cover"
+                  />
                   <label className="absolute bottom-2 right-2 cursor-pointer rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold text-slate-800 shadow">
                     <span className="inline-flex items-center gap-1">
                       <ImageIcon size={12} /> Replace
@@ -716,7 +866,12 @@ export default function AdminPage() {
                       accept="image/*"
                       className="hidden"
                       onChange={(e) =>
-                        replaceItemImage("digitalMarketing", item.id, "image", e.target.files?.[0])
+                        replaceItemImage(
+                          "digitalMarketing",
+                          item.id,
+                          "image",
+                          e.target.files?.[0]
+                        )
                       }
                     />
                   </label>
@@ -724,8 +879,10 @@ export default function AdminPage() {
                 <div className="flex items-center justify-between gap-2 p-4">
                   <input
                     value={item.title || ""}
-                    onChange={(e) => updateItemField("digitalMarketing", item.id, "title", e.target.value)}
-                    onBlur={() => saveChanges()}
+                    onChange={(e) =>
+                      updateItemField("digitalMarketing", item.id, "title", e.target.value)
+                    }
+                    onBlur={() => saveChanges(safe)}
                     className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium"
                   />
                   <button
@@ -747,7 +904,7 @@ export default function AdminPage() {
             onSubmit={async (e) => {
               e.preventDefault();
               const updated = {
-                ...data,
+                ...safe,
                 reviews: [
                   {
                     id: Date.now().toString(),
@@ -757,11 +914,17 @@ export default function AdminPage() {
                     rating: Number(newReview.rating),
                     comment: newReview.comment,
                   },
-                  ...(data.reviews || []),
+                  ...safe.reviews,
                 ],
               };
               setData(updated);
-              setNewReview({ name: "", role: "", service: "Media Agency", rating: 5, comment: "" });
+              setNewReview({
+                name: "",
+                role: "",
+                service: "Media Agency",
+                rating: 5,
+                comment: "",
+              });
               await saveChanges(updated, "Review added!");
             }}
             className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6"
@@ -784,7 +947,9 @@ export default function AdminPage() {
               />
               <select
                 value={newReview.service}
-                onChange={(e) => setNewReview({ ...newReview, service: e.target.value })}
+                onChange={(e) =>
+                  setNewReview({ ...newReview, service: e.target.value })
+                }
                 className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm"
               >
                 <option>Media Agency</option>
@@ -797,7 +962,9 @@ export default function AdminPage() {
               rows={2}
               placeholder="Review comment..."
               value={newReview.comment}
-              onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
+              onChange={(e) =>
+                setNewReview({ ...newReview, comment: e.target.value })
+              }
               className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
             />
             <button className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-5 py-2.5 text-xs font-semibold text-white hover:bg-[#004C97]">
@@ -806,8 +973,11 @@ export default function AdminPage() {
           </form>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            {(data.reviews || []).map((rev) => (
-              <div key={rev.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            {safe.reviews.map((rev) => (
+              <div
+                key={rev.id}
+                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+              >
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="font-bold text-slate-900">{rev.name}</p>
@@ -818,8 +988,8 @@ export default function AdminPage() {
                   <button
                     onClick={async () => {
                       const updated = {
-                        ...data,
-                        reviews: (data.reviews || []).filter((r) => r.id !== rev.id),
+                        ...safe,
+                        reviews: safe.reviews.filter((r) => r.id !== rev.id),
                       };
                       setData(updated);
                       await saveChanges(updated, "Review deleted!");
@@ -841,12 +1011,14 @@ export default function AdminPage() {
           <form
             onSubmit={async (e) => {
               e.preventDefault();
-              const exists = (data.employees || []).some(
-                (emp) => emp.employeeId.toLowerCase() === newEmp.employeeId.trim().toLowerCase()
+              const exists = safe.employees.some(
+                (emp) =>
+                  emp.employeeId?.toLowerCase() ===
+                  newEmp.employeeId.trim().toLowerCase()
               );
               if (exists) return alert("Ye Employee ID pehle se exist karti hai!");
               const updated = {
-                ...data,
+                ...safe,
                 employees: [
                   {
                     id: Date.now().toString(),
@@ -855,7 +1027,7 @@ export default function AdminPage() {
                     role: newEmp.role.trim() || "Team Member",
                     password: newEmp.password.trim(),
                   },
-                  ...(data.employees || []),
+                  ...safe.employees,
                 ],
               };
               setData(updated);
@@ -870,7 +1042,9 @@ export default function AdminPage() {
                 required
                 placeholder="Employee ID (e.g. NXW002)"
                 value={newEmp.employeeId}
-                onChange={(e) => setNewEmp({ ...newEmp, employeeId: e.target.value })}
+                onChange={(e) =>
+                  setNewEmp({ ...newEmp, employeeId: e.target.value })
+                }
                 className="rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm uppercase"
               />
               <input
@@ -890,7 +1064,9 @@ export default function AdminPage() {
                 required
                 placeholder="Password"
                 value={newEmp.password}
-                onChange={(e) => setNewEmp({ ...newEmp, password: e.target.value })}
+                onChange={(e) =>
+                  setNewEmp({ ...newEmp, password: e.target.value })
+                }
                 className="rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
               />
             </div>
@@ -900,8 +1076,11 @@ export default function AdminPage() {
           </form>
 
           <div className="grid gap-4 sm:grid-cols-3">
-            {(data.employees || []).map((emp) => (
-              <div key={emp.id} className="rounded-2xl border border-slate-200 bg-white p-4 text-sm shadow-sm">
+            {safe.employees.map((emp) => (
+              <div
+                key={emp.id}
+                className="rounded-2xl border border-slate-200 bg-white p-4 text-sm shadow-sm"
+              >
                 <div className="flex items-start justify-between">
                   <div>
                     <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-bold text-[#004C97]">
@@ -914,8 +1093,8 @@ export default function AdminPage() {
                   <button
                     onClick={async () => {
                       const updated = {
-                        ...data,
-                        employees: (data.employees || []).filter((x) => x.id !== emp.id),
+                        ...safe,
+                        employees: safe.employees.filter((x) => x.id !== emp.id),
                       };
                       setData(updated);
                       await saveChanges(updated, "Employee removed!");
@@ -931,10 +1110,12 @@ export default function AdminPage() {
 
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="font-bold text-slate-900">
-              Employee Attendance Records ({data.attendance?.length || 0})
+              Employee Attendance Records ({safe.attendance.length})
             </h2>
-            {(data.attendance || []).length === 0 ? (
-              <p className="mt-3 text-sm text-slate-500">Abhi tak kisi employee ne attendance mark nahi ki hai.</p>
+            {safe.attendance.length === 0 ? (
+              <p className="mt-3 text-sm text-slate-500">
+                Abhi tak kisi employee ne attendance mark nahi ki hai.
+              </p>
             ) : (
               <div className="mt-4 overflow-x-auto">
                 <table className="w-full text-left text-sm">
@@ -949,13 +1130,19 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {(data.attendance || []).map((rec) => (
+                    {safe.attendance.map((rec) => (
                       <tr key={rec.id}>
                         <td className="py-3 pr-4 font-medium text-slate-900">{rec.date}</td>
-                        <td className="py-3 pr-4 font-semibold text-[#004C97]">{rec.employeeId}</td>
+                        <td className="py-3 pr-4 font-semibold text-[#004C97]">
+                          {rec.employeeId}
+                        </td>
                         <td className="py-3 pr-4 text-slate-800">{rec.name}</td>
-                        <td className="py-3 pr-4 font-medium text-emerald-700">{rec.checkIn}</td>
-                        <td className="py-3 pr-4 text-slate-600">{rec.checkOut || "Active"}</td>
+                        <td className="py-3 pr-4 font-medium text-emerald-700">
+                          {rec.checkIn}
+                        </td>
+                        <td className="py-3 pr-4 text-slate-600">
+                          {rec.checkOut || "Active"}
+                        </td>
                         <td className="py-3 pr-4 text-xs text-slate-500">
                           {rec.mode} {rec.note ? `• ${rec.note}` : ""}
                         </td>
@@ -973,17 +1160,20 @@ export default function AdminPage() {
         <div className="mt-8 grid gap-8 lg:grid-cols-2">
           <div className="space-y-4">
             <h2 className="text-base font-bold text-slate-900">
-              Client Enquiries ({data.enquiries?.length || 0})
+              Client Enquiries ({safe.enquiries.length})
             </h2>
-            {(data.enquiries || []).length === 0 && (
+            {safe.enquiries.length === 0 && (
               <p className="text-sm text-slate-500">No enquiries yet.</p>
             )}
-            {(data.enquiries || []).map((enq) => (
-              <div key={enq.id} className="rounded-2xl border border-slate-200 bg-white p-5 text-sm shadow-sm">
+            {safe.enquiries.map((enq) => (
+              <div
+                key={enq.id}
+                className="rounded-2xl border border-slate-200 bg-white p-5 text-sm shadow-sm"
+              >
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="font-bold text-slate-900">{enq.name}</p>
-                    <p className="text-xs text-[#004C97] font-medium">{enq.service}</p>
+                    <p className="text-xs font-medium text-[#004C97]">{enq.service}</p>
                   </div>
                   <button
                     onClick={() => deleteInboxItem("enquiries", enq.id)}
@@ -995,8 +1185,12 @@ export default function AdminPage() {
                 <p className="mt-2 text-xs text-slate-600">
                   {enq.email} • {enq.phone}
                 </p>
-                {enq.company && <p className="text-xs text-slate-500">Company: {enq.company}</p>}
-                <p className="mt-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-700">{enq.message}</p>
+                {enq.company && (
+                  <p className="text-xs text-slate-500">Company: {enq.company}</p>
+                )}
+                <p className="mt-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-700">
+                  {enq.message}
+                </p>
                 <p className="mt-2 text-[11px] text-slate-400">{enq.date}</p>
               </div>
             ))}
@@ -1004,17 +1198,20 @@ export default function AdminPage() {
 
           <div className="space-y-4">
             <h2 className="text-base font-bold text-slate-900">
-              Job Applications & Resumes ({data.applications?.length || 0})
+              Job Applications & Resumes ({safe.applications.length})
             </h2>
-            {(data.applications || []).length === 0 && (
+            {safe.applications.length === 0 && (
               <p className="text-sm text-slate-500">No applications yet.</p>
             )}
-            {(data.applications || []).map((app) => (
-              <div key={app.id} className="rounded-2xl border border-slate-200 bg-white p-5 text-sm shadow-sm">
+            {safe.applications.map((app) => (
+              <div
+                key={app.id}
+                className="rounded-2xl border border-slate-200 bg-white p-5 text-sm shadow-sm"
+              >
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="font-bold text-slate-900">{app.name}</p>
-                    <p className="text-xs text-[#F7941D] font-medium">{app.role}</p>
+                    <p className="text-xs font-medium text-[#F7941D]">{app.role}</p>
                   </div>
                   <button
                     onClick={() => deleteInboxItem("applications", app.id)}
@@ -1027,7 +1224,9 @@ export default function AdminPage() {
                   {app.email} • {app.phone}
                 </p>
                 {app.portfolio && (
-                  <p className="mt-1 text-xs text-slate-500 break-all">Portfolio: {app.portfolio}</p>
+                  <p className="mt-1 break-all text-xs text-slate-500">
+                    Portfolio: {app.portfolio}
+                  </p>
                 )}
                 {app.note && <p className="mt-2 text-xs text-slate-700">{app.note}</p>}
                 {app.resumeUrl && (
@@ -1037,7 +1236,8 @@ export default function AdminPage() {
                     rel="noreferrer"
                     className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3.5 py-1.5 text-xs font-semibold text-[#004C97] hover:bg-sky-100"
                   >
-                    <FileText size={14} /> View / Download Resume ({app.resumeName || "File"})
+                    <FileText size={14} /> View / Download Resume (
+                    {app.resumeName || "File"})
                   </a>
                 )}
                 <p className="mt-2 text-[11px] text-slate-400">{app.date}</p>
@@ -1062,7 +1262,9 @@ export default function AdminPage() {
               <input
                 required
                 value={newPass.username}
-                onChange={(e) => setNewPass({ ...newPass, username: e.target.value })}
+                onChange={(e) =>
+                  setNewPass({ ...newPass, username: e.target.value })
+                }
                 className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
               />
             </div>
@@ -1073,7 +1275,9 @@ export default function AdminPage() {
                 type="password"
                 placeholder="Enter new strong password"
                 value={newPass.password}
-                onChange={(e) => setNewPass({ ...newPass, password: e.target.value })}
+                onChange={(e) =>
+                  setNewPass({ ...newPass, password: e.target.value })
+                }
                 className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
               />
             </div>
